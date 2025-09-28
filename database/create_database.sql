@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     ip_address VARCHAR(45),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP,
+	expires_at TIMESTAMP NULL DEFAULT NULL,
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_user_id (user_id),
@@ -303,4 +303,4 @@ SELECT COUNT(*) as total_users FROM users;
 SELECT COUNT(*) as total_comments FROM comments;
 SELECT COUNT(*) as total_configs FROM config;
 
--- Fim do script
+-- Fim do scriptusername

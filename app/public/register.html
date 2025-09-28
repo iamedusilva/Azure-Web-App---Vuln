@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Sistema Vulnerável</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 50px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            border-color: #5cb85c;
+            box-shadow: 0 0 5px rgba(92, 184, 92, 0.3);
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .btn:hover {
+            background-color: #449d44;
+        }
+        .error {
+            color: #d9534f;
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .success {
+            color: #3c763d;
+            background-color: #dff0d8;
+            border: 1px solid #d6e9c6;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .links a {
+            color: #337ab7;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .vulnerability-info {
+            background-color: #fcf8e3;
+            border: 1px solid #faebcc;
+            color: #8a6d3b;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        small {
+            color: #666;
+            font-size: 12px;
+            display: block;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Cadastro de Usuário</h1>
+        
+        <div class="vulnerability-info">
+            <strong>⚠️ Vulnerabilidades:</strong> Este formulário é vulnerável a SQL Injection e XSS. 
+            Teste scripts maliciosos nos campos de texto.
+        </div>
+
+        <!-- Área para exibir mensagens -->
+        <div id="message"></div>
+
+        <form id="registerForm" action="#" method="post">
+            <div class="form-group">
+                <label for="fullname">👤 Nome Completo:</label>
+                <input type="text" id="fullname" name="fullname" required>
+                <small>Teste XSS: &lt;script&gt;alert('XSS')&lt;/script&gt;</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="username">🏷️ Nome de Usuário:</label>
+                <input type="text" id="username" name="username" required>
+                <small>Teste SQLi: admin'; DROP TABLE users;--</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">📧 Email:</label>
+                <input type="email" id="email" name="email" required>
+                <small>Email não é validado adequadamente</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">🔑 Senha:</label>
+                <input type="password" id="password" name="password" required>
+                <small>Senhas são armazenadas em texto plano (vulnerável)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm-password">🔑 Confirmar Senha:</label>
+                <input type="password" id="confirm-password" name="confirm-password" required>
+            </div>
+            
+            <button type="submit" class="btn">Cadastrar</button>
+        </form>
+
+        <div class="links">
+            <a href="login.html">🔐 Já tem conta? Faça login</a>
+            <a href="index.html">🏠 Voltar ao Início</a>
+        </div>
+
+        <div style="margin-top: 30px; padding: 15px; background-color: #f8f8f8; border-radius: 4px;">
+            <h4>Vulnerabilidades para Testar:</h4>
+            <ul style="font-size: 12px; color: #666;">
+                <li><strong>XSS no Nome:</strong> &lt;img src=x onerror=alert('XSS')&gt;</li>
+                <li><strong>SQLi no Usuário:</strong> test'; INSERT INTO users VALUES('hacker','pass');--</li>
+                <li><strong>Email inválido:</strong> javascript:alert('XSS')@test.com</li>
+                <li><strong>Senha fraca:</strong> O sistema aceita senhas muito simples</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fullname = document.getElementById('fullname').value;
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const messageDiv = document.getElementById('message');
+            
+            // Validação básica (propositalmente fraca)
+            if (password !== confirmPassword) {
+                messageDiv.innerHTML = '<div class="error">❌ As senhas não coincidem!</div>';
+                return;
+            }
+            
+            // Simular XSS - executar scripts no nome
+            if (fullname.includes('<script>') || fullname.includes('javascript:')) {
+                messageDiv.innerHTML = '<div class="error">🎯 XSS detectado! Script executado: ' + fullname + '</div>';
+                // Em um cenário real, isso seria perigoso
+                setTimeout(() => {
+                    if (fullname.includes('alert')) {
+                        alert('XSS executado com sucesso!');
+                    }
+                }, 1000);
+            }
+            
+            // Simular SQL Injection
+            if (username.includes(';') || username.toLowerCase().includes('drop') || username.includes('--')) {
+                messageDiv.innerHTML = '<div class="error">🎯 SQL Injection detectado! Comando SQL executado: ' + username + '</div>';
+            }
+            
+            // Cadastro "bem-sucedido"
+            setTimeout(() => {
+                messageDiv.innerHTML = '<div class="success">✅ Cadastro realizado com sucesso! Redirecionando...</div>';
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

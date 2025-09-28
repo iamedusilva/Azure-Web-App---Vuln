@@ -61,28 +61,32 @@
         <h2>Login (Vulnerável a SQL Injection)</h2>
         <div class="error">
             <?php
+            // Incluir classe de conexão com banco
+            require_once 'config/database.php';
+            
             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
                 $username = $_POST['username'];
                 $password = $_POST['password'];
                 
-                // Conexão vulnerável ao banco de dados
-                $conn = new mysqli("localhost", "root", "", "vulnerable_db");
+                // Usar classe Database vulnerável
+                $db = new Database();
                 
-                if ($conn->connect_error) {
-                    die("Conexão falhou: " . $conn->connect_error);
-                }
+                // Autenticação vulnerável (permite SQL Injection)
+                $user = $db->authenticateUser($username, $password);
                 
-                // Query vulnerável a SQL Injection
-                $sql = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";
-                $result = $conn->query($sql);
-                
-                if ($result->num_rows > 0) {
-                    echo "Login bem-sucedido! Bem-vindo, $username!";
+                if ($user) {
+                    echo "Login bem-sucedido! Bem-vindo, " . $user['full_name'] . "! (Role: " . $user['role'] . ")";
+                    
+                    // Log da tentativa de login (armazena senha!)
+                    $db->query("INSERT INTO login_logs (username, password_attempted, ip_address, user_agent, success) 
+                               VALUES ('$username', '$password', '{$_SERVER['REMOTE_ADDR']}', '{$_SERVER['HTTP_USER_AGENT']}', TRUE)");
                 } else {
                     echo "Usuário ou senha incorretos.";
+                    
+                    // Log da tentativa falhada (armazena senha tentada!)
+                    $db->query("INSERT INTO login_logs (username, password_attempted, ip_address, user_agent, success) 
+                               VALUES ('$username', '$password', '{$_SERVER['REMOTE_ADDR']}', '{$_SERVER['HTTP_USER_AGENT']}', FALSE)");
                 }
-                
-                $conn->close();
             }
             ?>
         </div>
@@ -108,23 +112,15 @@
                 $comment = $_POST['comment'];
                 $name = $_POST['name'];
                 
-                // Conexão ao banco de dados
-                $conn = new mysqli("localhost", "root", "", "vulnerable_db");
+                // Usar classe Database vulnerável
+                $db = new Database();
                 
-                if ($conn->connect_error) {
-                    die("Conexão falhou: " . $conn->connect_error);
-                }
-                
-                // Inserir comentário sem sanitização (vulnerável a XSS)
-                $sql = "INSERT INTO comments (name, comment) VALUES ('$name', '$comment')";
-                
-                if ($conn->query($sql) === TRUE) {
+                // Inserir comentário vulnerável (permite XSS e SQL Injection)
+                if ($db->addComment($name, $comment)) {
                     echo "Comentário adicionado com sucesso!";
                 } else {
-                    echo "Erro: " . $sql . "<br>" . $conn->error;
+                    echo "Erro ao adicionar comentário.";
                 }
-                
-                $conn->close();
             }
             ?>
         </div>
@@ -142,28 +138,20 @@
         
         <h3>Comentários Recentes:</h3>
         <?php
-        // Exibir comentários sem sanitização (vulnerável a XSS)
-        $conn = new mysqli("localhost", "root", "", "vulnerable_db");
+        // Exibir comentários usando a classe Database
+        $db = new Database();
+        $comments = $db->getComments();
         
-        if ($conn->connect_error) {
-            die("Conexão falhou: " . $conn->connect_error);
-        }
-        
-        $sql = "SELECT name, comment, created_at FROM comments ORDER BY created_at DESC";
-        $result = $conn->query($sql);
-        
-        if ($result->num_rows > 0) {
-            while($row = $result->fetch_assoc()) {
+        if (!empty($comments)) {
+            foreach($comments as $comment) {
                 echo "<div class='comment'>";
-                echo "<strong>" . $row["name"] . "</strong> - " . $row["created_at"] . "<br>";
-                echo $row["comment"]; // Vulnerável a XSS
+                echo "<strong>" . $comment["name"] . "</strong> - " . $comment["created_at"] . "<br>";
+                echo $comment["comment"]; // Vulnerável a XSS - não sanitizado
                 echo "</div>";
             }
         } else {
             echo "Nenhum comentário ainda.";
         }
-        
-        $conn->close();
         ?>
     </div>
 </body>

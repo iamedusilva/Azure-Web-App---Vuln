@@ -7,7 +7,10 @@
 // Incluir classe de conexão com banco
 require_once '../../config/database.php';
 
-session_start();
+// Iniciar sessão se ainda não foi iniciada  
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 $db = new Database();
 ?>
 
@@ -17,7 +20,11 @@ $db = new Database();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Vulnerável - Área Pública</title>
-    <style>
+    <!-- CSS Styles -->
+    <link rel="stylesheet" href="assets/css/common.css">
+    <link rel="stylesheet" href="assets/css/index.css">
+</head>
+<body>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -192,11 +199,20 @@ $db = new Database();
         <div class="stats-grid">
             <?php
             try {
-                $total_users = $db->query("SELECT COUNT(*) as total FROM users")->fetch_assoc()['total'];
-                $total_comments = $db->query("SELECT COUNT(*) as total FROM comments")->fetch_assoc()['total'];
-                $total_login_attempts = $db->query("SELECT COUNT(*) as total FROM login_logs")->fetch_assoc()['total'];
-                $failed_logins = $db->query("SELECT COUNT(*) as total FROM login_logs WHERE success = FALSE")->fetch_assoc()['total'];
-                $recent_users = $db->query("SELECT COUNT(*) as total FROM users WHERE DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetch_assoc()['total'];
+                $total_users_result = $db->query("SELECT COUNT(*) as total FROM users");
+                $total_users = is_array($total_users_result) ? $total_users_result[0]['total'] : $total_users_result->fetch_assoc()['total'];
+
+                $total_comments_result = $db->query("SELECT COUNT(*) as total FROM comments");
+                $total_comments = is_array($total_comments_result) ? $total_comments_result[0]['total'] : $total_comments_result->fetch_assoc()['total'];
+
+                $total_login_attempts_result = $db->query("SELECT COUNT(*) as total FROM login_logs");
+                $total_login_attempts = is_array($total_login_attempts_result) ? $total_login_attempts_result[0]['total'] : $total_login_attempts_result->fetch_assoc()['total'];
+
+                $failed_logins_result = $db->query("SELECT COUNT(*) as total FROM login_logs WHERE success = FALSE");
+                $failed_logins = is_array($failed_logins_result) ? $failed_logins_result[0]['total'] : $failed_logins_result->fetch_assoc()['total'];
+
+                $recent_users_result = $db->query("SELECT COUNT(*) as total FROM users WHERE DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)");
+                $recent_users = is_array($recent_users_result) ? $recent_users_result[0]['total'] : $recent_users_result->fetch_assoc()['total'];
             ?>
                 <div class="stat-card">
                     <div class="stat-number"><?php echo $total_users; ?></div>
@@ -235,8 +251,14 @@ $db = new Database();
                                          ORDER BY created_at DESC 
                                          LIMIT 8");
                 
-                if ($recent_logs && $recent_logs->num_rows > 0):
-                    while ($log = $recent_logs->fetch_assoc()): ?>
+                if ($recent_logs && (is_array($recent_logs) ? count($recent_logs) > 0 : $recent_logs->num_rows > 0)):
+                    $logs_array = is_array($recent_logs) ? $recent_logs : [];
+                    if (!is_array($recent_logs)) {
+                        while ($log = $recent_logs->fetch_assoc()) {
+                            $logs_array[] = $log;
+                        }
+                    }
+                    foreach ($logs_array as $log): ?>
                         <div class="activity-item">
                             <strong><?php echo $log['success'] ? '✅' : '❌'; ?></strong>
                             Login: <strong><?php echo htmlspecialchars($log['username']); ?></strong>
@@ -244,7 +266,7 @@ $db = new Database();
                             | IP: <?php echo htmlspecialchars($log['ip_address']); ?>
                             | <?php echo $log['created_at']; ?>
                         </div>
-                    <?php endwhile;
+                    <?php endforeach;
                 else: ?>
                     <div class="activity-item">Nenhuma atividade recente encontrada.</div>
                 <?php endif;
@@ -265,8 +287,14 @@ $db = new Database();
                                                  ORDER BY created_at DESC 
                                                  LIMIT 5");
                 
-                if ($recent_users_query && $recent_users_query->num_rows > 0):
-                    while ($user = $recent_users_query->fetch_assoc()): ?>
+                if ($recent_users_query && (is_array($recent_users_query) ? count($recent_users_query) > 0 : $recent_users_query->num_rows > 0)):
+                    $users_array = is_array($recent_users_query) ? $recent_users_query : [];
+                    if (!is_array($recent_users_query)) {
+                        while ($user = $recent_users_query->fetch_assoc()) {
+                            $users_array[] = $user;
+                        }
+                    }
+                    foreach ($users_array as $user): ?>
                         <div class="activity-item">
                             <strong>👤 <?php echo htmlspecialchars($user['username']); ?></strong>
                             (<?php echo htmlspecialchars($user['full_name']); ?>)
@@ -275,7 +303,7 @@ $db = new Database();
                             | Papel: <?php echo htmlspecialchars($user['role']); ?>
                             | Criado: <?php echo $user['created_at']; ?>
                         </div>
-                    <?php endwhile;
+                    <?php endforeach;
                 else: ?>
                     <div class="activity-item">Nenhum usuário encontrado.</div>
                 <?php endif;
@@ -292,14 +320,20 @@ $db = new Database();
             try {
                 $configs = $db->query("SELECT config_key, config_value, description FROM config LIMIT 5");
                 
-                if ($configs && $configs->num_rows > 0):
-                    while ($config = $configs->fetch_assoc()): ?>
+                if ($configs && (is_array($configs) ? count($configs) > 0 : $configs->num_rows > 0)):
+                    $configs_array = is_array($configs) ? $configs : [];
+                    if (!is_array($configs)) {
+                        while ($config = $configs->fetch_assoc()) {
+                            $configs_array[] = $config;
+                        }
+                    }
+                    foreach ($configs_array as $config): ?>
                         <div class="activity-item">
                             <strong><?php echo htmlspecialchars($config['config_key']); ?>:</strong>
                             <span class="danger"><?php echo htmlspecialchars($config['config_value']); ?></span>
                             <small>(<?php echo htmlspecialchars($config['description']); ?>)</small>
                         </div>
-                    <?php endwhile;
+                    <?php endforeach;
                 endif;
             } catch (Exception $e) {
                 echo '<div class="activity-item danger">Erro ao carregar configurações</div>';
@@ -318,6 +352,64 @@ $db = new Database();
                 <li><a href="login.php">Teste SQL Injection no login</a></li>
                 <li><a href="register.php">Cadastro com dados maliciosos</a></li>
             </ul>
+        </div>
+
+        <!-- Seção da Equipe -->
+        <div class="team-section">
+            <h2 class="team-title">Nossa Equipe</h2>
+            <p class="team-subtitle">Especialistas em Segurança da Informação</p>
+            
+            <div class="team-grid">
+                <div class="team-member animate-fadeIn animate-delay-1">
+                    <div class="team-avatar">AS</div>
+                    <div class="team-name">Ana Silva</div>
+                    <div class="team-role">Security Architect</div>
+                    <div class="team-description">
+                        Especialista em arquitetura de segurança e análise de vulnerabilidades. 
+                        Responsável por identificar e documentar falhas de segurança em aplicações web.
+                    </div>
+                </div>
+                
+                <div class="team-member animate-fadeIn animate-delay-2">
+                    <div class="team-avatar">BC</div>
+                    <div class="team-name">Bruno Costa</div>
+                    <div class="team-role">Penetration Tester</div>
+                    <div class="team-description">
+                        Expert em testes de penetração e ethical hacking. 
+                        Conduz auditorias de segurança e simula ataques reais para identificar vulnerabilidades.
+                    </div>
+                </div>
+                
+                <div class="team-member animate-fadeIn animate-delay-3">
+                    <div class="team-avatar">CM</div>
+                    <div class="team-name">Carla Moreira</div>
+                    <div class="team-role">Forensic Analyst</div>
+                    <div class="team-description">
+                        Analista forense digital especializada em investigação de incidentes de segurança. 
+                        Responsável por análise de logs e investigação de breaches.
+                    </div>
+                </div>
+                
+                <div class="team-member animate-fadeIn animate-delay-4">
+                    <div class="team-avatar">DF</div>
+                    <div class="team-name">Diego Fernandes</div>
+                    <div class="team-role">Security Developer</div>
+                    <div class="team-description">
+                        Desenvolvedor especializado em secure coding e implementação de controles de segurança. 
+                        Foca na criação de aplicações seguras e na correção de vulnerabilidades.
+                    </div>
+                </div>
+                
+                <div class="team-member animate-fadeIn animate-delay-5">
+                    <div class="team-avatar">ER</div>
+                    <div class="team-name">Elena Rodriguez</div>
+                    <div class="team-role">Risk Manager</div>
+                    <div class="team-description">
+                        Gestora de riscos especializada em cybersecurity governance. 
+                        Responsável por avaliação de riscos, compliance e políticas de segurança.
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="footer">

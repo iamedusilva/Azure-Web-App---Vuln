@@ -1,40 +1,12 @@
 <?php
 /**
- * Configuração de Conexão com Banco de Dados MySQL/Azure SQL
+ * Configuração de Conexão com Azure SQL Database
  * ATENÇÃO: Este código é propositalmente vulnerável para fins educacionais
  */
 
-// ================================================
-// CONEXÕES AZURE SQL DATABASE - EXEMPLOS
-// ================================================
-
-/*
-// PHP Data Objects(PDO) Sample Code:
-try {
-    $conn = new PDO("sqlsrv:server = tcp:server-db-vuln.database.windows.net,1433; Database = vulnerable_db", "eduardo", "{your_password_here}");
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-}
-catch (PDOException $e) {
-    print("Error connecting to SQL Server.");
-    die(print_r($e));
-}
-
-// SQL Server Extension Sample Code:
-$connectionInfo = array("UID" => "eduardo", "pwd" => "081187Melo", "Database" => "vulnerable_db", "LoginTimeout" => 30, "Encrypt" => 1, "TrustServerCertificate" => 0);
-$serverName = "tcp:server-db-vuln.database.windows.net,1433";
-$conn = sqlsrv_connect($serverName, $connectionInfo);
-*/
-
 class Database {
-    // Configurações do banco de dados
-    private $db_type = "mysql"; // "mysql" ou "azure"
-    
-    // Configurações MySQL (local)
-    private $mysql_host = "localhost";
-    private $mysql_username = "root";
-    private $mysql_password = ""; // Senha vazia - VULNERÁVEL
-    private $mysql_database = "vulnerable_db";
-    private $mysql_charset = "utf8mb4";
+    // Configurações do banco de dados - apenas Azure SQL
+    private $db_type = "azure"; // Forçado para Azure SQL Database
     
     // Configurações Azure SQL Database
     private $azure_server = "tcp:server-db-vuln.database.windows.net,1433";
@@ -54,71 +26,21 @@ class Database {
     }
     
     /**
-     * Construtor - conecta automaticamente ao banco
-     * @param string $type Tipo de conexão: "mysql" ou "azure"
+     * Construtor - conecta automaticamente ao Azure SQL Database
      */
-    public function __construct($type = "azure") {
-        // FORÇAR USO DO AZURE SQL DATABASE
-        $this->db_type = "azure";
+    public function __construct() {
         $this->connect();
     }
-    
+
     /**
-     * Detecta automaticamente o tipo de banco baseado no ambiente
-     * @return string
-     */
-    private function detectDatabaseType() {
-        // Se extensões SQL Server estão disponíveis, tenta Azure
-        if (extension_loaded('pdo_sqlsrv') || extension_loaded('sqlsrv')) {
-            return "azure";
-        }
-        // Senão, usa MySQL
-        return "mysql";
-    }
-    
-    /**
-     * Conecta ao banco de dados (MySQL ou Azure SQL)
-     * @return mysqli|PDO|resource|null
+     * Conecta ao Azure SQL Database
+     * @return PDO|resource|null
      */
     public function connect() {
         try {
-            if ($this->db_type == "azure") {
-                return $this->connectAzure();
-            } else {
-                return $this->connectMySQL();
-            }
+            return $this->connectAzure();
         } catch (Exception $e) {
             die("Erro de conexão com o banco: " . $e->getMessage());
-        }
-    }
-    
-    /**
-     * Conecta ao banco de dados MySQL
-     * @return mysqli|null
-     */
-    private function connectMySQL() {
-        try {
-            // Conexão básica com MySQL - sem SSL e configurações de segurança
-            $this->connection = new mysqli(
-                $this->mysql_host, 
-                $this->mysql_username, 
-                $this->mysql_password, 
-                $this->mysql_database
-            );
-            
-            // Verifica se houve erro na conexão
-            if ($this->connection->connect_error) {
-                throw new Exception("Falha na conexão MySQL: " . $this->connection->connect_error);
-            }
-            
-            // Define charset (vulnerável a algumas injeções de charset)
-            $this->connection->set_charset($this->mysql_charset);
-            
-            $this->connection_type = "mysql";
-            return $this->connection;
-            
-        } catch (Exception $e) {
-            throw new Exception("Erro MySQL: " . $e->getMessage());
         }
     }
     
@@ -185,32 +107,10 @@ class Database {
     /**
      * Executa uma query vulnerável (sem prepared statements)
      * @param string $query
-     * @return mysqli_result|array|bool
+     * @return array|bool
      */
     public function query($query) {
-        if ($this->connection_type == "mysql") {
-            return $this->queryMySQL($query);
-        } else {
-            return $this->queryAzure($query);
-        }
-    }
-    
-    /**
-     * Executa query no MySQL
-     * @param string $query
-     * @return mysqli_result|array|bool
-     */
-    private function queryMySQL($query) {
-        // VULNERÁVEL - executa query diretamente sem sanitização
-        $result = $this->connection->query($query);
-        
-        if (!$result) {
-            echo "Erro na query MySQL: " . $this->connection->error . "<br>";
-            echo "Query executada: " . $query . "<br>";
-            return false;
-        }
-        
-        return $result;
+        return $this->queryAzure($query);
     }
     
     /**
@@ -297,16 +197,9 @@ class Database {
         
         $result = $this->query($query);
         
-        if ($this->connection_type == "mysql") {
-            // MySQL retorna mysqli_result
-            if ($result && $result->num_rows > 0) {
-                return $result->fetch_assoc();
-            }
-        } else {
-            // Azure retorna array
-            if ($result && is_array($result) && count($result) > 0) {
-                return $result[0];
-            }
+        // Azure retorna array
+        if ($result && is_array($result) && count($result) > 0) {
+            return $result[0];
         }
         
         return null;
@@ -351,18 +244,9 @@ class Database {
         
         $comments = [];
         
-        if ($this->connection_type == "mysql") {
-            // MySQL retorna mysqli_result
-            if ($result && $result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    $comments[] = $row;
-                }
-            }
-        } else {
-            // Azure retorna array diretamente
-            if ($result && is_array($result)) {
-                $comments = $result;
-            }
+        // Azure retorna array diretamente
+        if ($result && is_array($result)) {
+            $comments = $result;
         }
         
         return $comments;
@@ -378,10 +262,8 @@ class Database {
         $result = $this->query($query);
         
         $users = [];
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $users[] = $row;
-            }
+        if ($result && is_array($result)) {
+            $users = $result;
         }
         
         return $users;
@@ -397,16 +279,9 @@ class Database {
         $query = "SELECT * FROM users WHERE id = $id";
         $result = $this->query($query);
         
-        if ($this->connection_type == "mysql") {
-            // MySQL retorna mysqli_result
-            if ($result && $result->num_rows > 0) {
-                return $result->fetch_assoc();
-            }
-        } else {
-            // Azure retorna array
-            if ($result && is_array($result) && count($result) > 0) {
-                return $result[0];
-            }
+        // Azure retorna array
+        if ($result && is_array($result) && count($result) > 0) {
+            return $result[0];
         }
         
         return null;
@@ -415,7 +290,7 @@ class Database {
     /**
      * Executa query personalizada (MUITO PERIGOSO)
      * @param string $customQuery
-     * @return mysqli_result|array|bool
+     * @return array|bool
      */
     public function executeCustomQuery($customQuery) {
         // EXTREMAMENTE VULNERÁVEL - permite qualquer query
@@ -433,17 +308,9 @@ class Database {
         $query = "SELECT COUNT(*) as total FROM $table";
         $result = $this->query($query);
         
-        if ($this->connection_type == "mysql") {
-            // MySQL retorna mysqli_result
-            if ($result) {
-                $row = $result->fetch_assoc();
-                return $row['total'] ?? 0;
-            }
-        } else {
-            // Azure retorna array
-            if ($result && is_array($result) && count($result) > 0) {
-                return $result[0]['total'] ?? 0;
-            }
+        // Azure retorna array
+        if ($result && is_array($result) && count($result) > 0) {
+            return $result[0]['total'] ?? 0;
         }
         
         return 0;
@@ -457,14 +324,7 @@ class Database {
         $query = "SELECT config_key, config_value, description FROM config";
         $result = $this->query($query);
         
-        $configs = [];
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $configs[] = $row;
-            }
-        }
-        
-        return $configs;
+        return $result ? $result : [];
     }
     
     /**
@@ -473,17 +333,10 @@ class Database {
      * @return array
      */
     public function getLoginLogs($limit = 20) {
-        $query = "SELECT * FROM login_logs ORDER BY created_at DESC LIMIT $limit";
+        $query = "SELECT TOP $limit * FROM login_logs ORDER BY created_at DESC";
         $result = $this->query($query);
         
-        $logs = [];
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $logs[] = $row;
-            }
-        }
-        
-        return $logs;
+        return $result ? $result : [];
     }
     
     /**
@@ -496,7 +349,7 @@ class Database {
      */
     public function logLoginAttempt($username, $password, $ip, $userAgent, $success) {
         // MUITO VULNERÁVEL - armazena senhas em texto plano
-        $successValue = $success ? 'TRUE' : 'FALSE';
+        $successValue = $success ? 1 : 0;
         $query = "INSERT INTO login_logs (username, password_attempted, ip_address, user_agent, success) 
                   VALUES ('$username', '$password', '$ip', '$userAgent', $successValue)";
         
@@ -533,39 +386,7 @@ class Database {
         $query = "SELECT * FROM $table WHERE $where";
         $result = $this->query($query);
         
-        $records = [];
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $records[] = $row;
-            }
-        }
-        
-        return $records;
-    }
-    
-    /**
-     * Executa múltiplas queries (PERIGOSO)
-     * @param string $queries
-     * @return array
-     */
-    public function executeMultipleQueries($queries) {
-        // MUITO PERIGOSO - permite execução de múltiplas queries
-        $results = [];
-        
-        if ($this->connection->multi_query($queries)) {
-            do {
-                if ($result = $this->connection->store_result()) {
-                    $data = [];
-                    while ($row = $result->fetch_assoc()) {
-                        $data[] = $row;
-                    }
-                    $results[] = $data;
-                    $result->free();
-                }
-            } while ($this->connection->next_result());
-        }
-        
-        return $results;
+        return $result ? $result : [];
     }
     
     /**
@@ -573,7 +394,13 @@ class Database {
      */
     public function close() {
         if ($this->connection) {
-            $this->connection->close();
+            if ($this->connection_type == "azure_pdo") {
+                // PDO: define como null para fechar
+                $this->connection = null;
+            } elseif ($this->connection_type == "azure_sqlsrv") {
+                // SQL Server extension: fecha conexão
+                sqlsrv_close($this->connection);
+            }
         }
     }
     
@@ -591,61 +418,10 @@ function getDatabase() {
     
     if ($database === null) {
         // SEMPRE USA AZURE SQL DATABASE
-        $database = new Database("azure");
+        $database = new Database();
     }
     
     return $database;
 }
-
-// ================================
-// EXEMPLOS DE USO DUAL DATABASE
-// ================================
-
-/*
-// EXEMPLO 1: Usando MySQL (padrão)
-$db_mysql = new Database("mysql");
-$user = $db_mysql->authenticateUser("admin", "123456");
-
-// EXEMPLO 2: Usando Azure SQL Database
-$db_azure = new Database("azure");
-$user = $db_azure->authenticateUser("admin", "123456");
-
-// EXEMPLO 3: Detecção automática
-$db_auto = new Database(); // Detecta automaticamente
-
-// EXEMPLO 4: Todos os exemplos de vulnerabilidades funcionam em ambos:
-
-// SQL Injection no login
-$user = $db_azure->authenticateUser("admin' OR '1'='1'-- ", "qualquer_coisa");
-
-// XSS nos comentários  
-$db_azure->addComment("Hacker", "<script>alert('XSS')</script>");
-
-// Exposição de dados sensíveis
-$users = $db_azure->getAllUsers(); // Retorna senhas em texto plano
-
-// Query personalizada perigosa (funciona com T-SQL também)
-$db_azure->executeCustomQuery("SELECT * FROM INFORMATION_SCHEMA.TABLES");
-*/
-
-// Exemplo de uso vulnerável original:
-/*
-$db = new Database();
-
-// SQL Injection no login
-$user = $db->authenticateUser("admin' OR '1'='1'-- ", "qualquer_coisa");
-
-// XSS nos comentários  
-$db->addComment("Hacker", "<script>alert('XSS')</script>");
-
-// Exposição de dados sensíveis
-$users = $db->getAllUsers(); // Retorna senhas em texto plano
-
-// Query personalizada perigosa
-$db->executeCustomQuery("DROP TABLE users; --");
-
-// Múltiplas queries perigosas
-$db->executeMultipleQueries("SELECT * FROM users; DROP TABLE comments;");
-*/
 
 ?>

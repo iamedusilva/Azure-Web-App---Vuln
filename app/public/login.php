@@ -7,6 +7,18 @@
 // Incluir classe de conexão com banco
 require_once '../../config/database.php';
 
+// Iniciar sessão se ainda não foi iniciada
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Verificar se usuário já está logado
+if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+    // Redirecionar para dashboard se já estiver logado
+    header('Location: dashboard.php');
+    exit;
+}
+
 $error_message = '';
 $success_message = '';
 
@@ -25,8 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username']) && isset($
         if ($user) {
             $success_message = "Login bem-sucedido! Bem-vindo, " . htmlspecialchars($user['full_name']) . "! (Role: " . htmlspecialchars($user['role']) . ")";
             
-            // Iniciar sessão vulnerável
-            session_start();
+            // Definir variáveis de sessão
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
@@ -35,8 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username']) && isset($
             // Log da tentativa de login (armazena senha!)
             $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-            $db->query("INSERT INTO login_logs (username, password_attempted, ip_address, user_agent, success) 
-                       VALUES ('$username', '$password', '$ip', '$user_agent', TRUE)");
+            $db->logLoginAttempt($username, $password, $ip, $user_agent, true);
             
             // Redirecionar após 2 segundos
             header("refresh:2;url=dashboard.php");
@@ -46,8 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username']) && isset($
             // Log da tentativa falhada (armazena senha tentada!)
             $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-            $db->query("INSERT INTO login_logs (username, password_attempted, ip_address, user_agent, success) 
-                       VALUES ('$username', '$password', '$ip', '$user_agent', FALSE)");
+            $db->logLoginAttempt($username, $password, $ip, $user_agent, false);
         }
     } catch (Exception $e) {
         $error_message = "Erro no sistema: " . $e->getMessage();
@@ -60,123 +69,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username']) && isset($
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistema Vulnerável</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 500px;
-            margin: 50px auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: bold;
-        }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        input:focus {
-            outline: none;
-            border-color: #337ab7;
-            box-shadow: 0 0 5px rgba(51, 122, 183, 0.3);
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #337ab7;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-bottom: 15px;
-        }
-        .btn:hover {
-            background-color: #286090;
-        }
-        .error {
-            color: #d9534f;
-            background-color: #f2dede;
-            border: 1px solid #ebccd1;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .success {
-            color: #3c763d;
-            background-color: #dff0d8;
-            border: 1px solid #d6e9c6;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .links {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .links a {
-            color: #337ab7;
-            text-decoration: none;
-            margin: 0 10px;
-        }
-        .links a:hover {
-            text-decoration: underline;
-        }
-        .vulnerability-info {
-            background-color: #fcf8e3;
-            border: 1px solid #faebcc;
-            color: #8a6d3b;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        small {
-            color: #666;
-            font-size: 12px;
-            display: block;
-            margin-top: 3px;
-        }
-    </style>
+    <title>Login - FinSecure</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- CSS Styles -->
+    <link rel="stylesheet" href="assets/css/common.css">
+    <link rel="stylesheet" href="assets/css/auth.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🔐 Login do Sistema</h1>
-        
-        <div class="vulnerability-info">
-            <strong>⚠️ Vulnerabilidade:</strong> Este formulário é vulnerável a SQL Injection. 
-            Teste com: <code>admin' OR '1'='1'--</code>
+    <div class="login-container">
+        <div class="logo">
+            <img src="assets/images/PingPay(img-letrabranca).png" alt="PingPay Logo" style="
+                width: 300px; 
+                height: 70px; 
+                object-fit: contain;
+                margin: 0 auto 1rem;
+                display: block;
+                filter: brightness(1.1) contrast(1.2);
+            ">
+            <p>Acesse sua conta</p>
         </div>
-
+        
         <?php if ($error_message): ?>
-            <div class="error">❌ <?php echo htmlspecialchars($error_message); ?></div>
+            <div class="error">
+                <i class="fas fa-times-circle"></i> <?php echo htmlspecialchars($error_message); ?>
+            </div>
         <?php endif; ?>
 
         <?php if ($success_message): ?>
-            <div class="success">✅ <?php echo $success_message; ?></div>
+            <div class="success">
+                <i class="fas fa-check-circle"></i> <?php echo $success_message; ?>
+            </div>
             <script>
                 setTimeout(() => {
                     window.location.href = 'dashboard.php';
@@ -186,47 +108,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username']) && isset($
 
         <form method="post" action="">
             <div class="form-group">
-                <label for="username">👤 Usuário:</label>
-                <input type="text" id="username" name="username" value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>" required>
-                <small>Teste com: <strong>admin' OR '1'='1'--</strong></small>
+                <label for="username">
+                    <i class="fas fa-user"></i> Usuário
+                </label>
+                <i class="fas fa-user"></i>
+                <input type="text" id="username" name="username" 
+                       value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>" 
+                       placeholder="Digite seu usuário" required>
+                <small>Teste SQL Injection: <strong>admin' OR '1'='1'--</strong></small>
             </div>
             
             <div class="form-group">
-                <label for="password">🔑 Senha:</label>
-                <input type="password" id="password" name="password" required>
-                <small>Qualquer valor funciona com SQLi</small>
+                <label for="password">
+                    Senha
+                </label>
+                <div class="password-field" style="position: relative; display: inline-block; width: 100%;">
+                    <input type="password" id="password" name="password" 
+                           placeholder="Digite sua senha" required style="padding-right: 3rem; padding-left: 1rem; width: 100%;">
+                    <i class="fas fa-eye password-toggle" onclick="togglePassword('password', this)" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #00bcd4;"></i>
+                </div>
+                <small>Qualquer valor funciona com SQL Injection</small>
             </div>
             
-            <button type="submit" class="btn">Entrar</button>
+            <button type="submit" class="btn">
+                <i class="fas fa-sign-in-alt"></i> Entrar na Plataforma
+            </button>
         </form>
 
         <div class="links">
-            <a href="register.php">📝 Não tem conta? Cadastre-se</a>
-            <a href="../../index.php">🏠 Voltar ao Início</a>
-            <a href="../../admin.php?admin=true">⚙️ Painel Admin</a>
-        </div>
-
-        <div style="margin-top: 30px; padding: 15px; background-color: #f8f8f8; border-radius: 4px;">
-            <h4>Usuários de Teste Válidos:</h4>
-            <ul style="font-size: 12px; color: #666;">
-                <li><strong>admin</strong> / admin</li>
-                <li><strong>root</strong> / 123456</li>
-                <li><strong>user1</strong> / password</li>
-                <li><strong>guest</strong> / guest</li>
-            </ul>
-            
-            <h4>Exemplos de Ataques SQL Injection:</h4>
-            <ul style="font-size: 12px; color: #666;">
-                <li><strong>Bypass básico:</strong> admin' OR '1'='1'--</li>
-                <li><strong>Union attack:</strong> ' UNION SELECT 1,2,3,username,password,6,7,8 FROM users--</li>
-                <li><strong>Blind SQLi:</strong> admin' AND SLEEP(3)--</li>
-                <li><strong>Boolean-based:</strong> admin' AND '1'='1</li>
-            </ul>
-            
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">
-                💡 <strong>Dica:</strong> Observe que as tentativas de login (incluindo senhas) são logadas no banco de dados!
-            </p>
+            <a href="register.php">
+                <i class="fas fa-user-plus"></i> Criar Conta
+            </a>
+            <a href="../../index.php">
+                <i class="fas fa-home"></i> Início
+            </a>
         </div>
     </div>
+
+    <script>
+        function togglePassword(fieldId, icon) {
+            const field = document.getElementById(fieldId);
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
 </body>
 </html>

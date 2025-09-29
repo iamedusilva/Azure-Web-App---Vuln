@@ -115,7 +115,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username']) && isset($
                 <input type="text" id="username" name="username" 
                        value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>" 
                        placeholder="Digite seu usuário" required>
-                <small>Teste SQL Injection: <strong>admin' OR '1'='1'--</strong></small>
             </div>
             
             <div class="form-group">

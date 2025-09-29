@@ -11,7 +11,15 @@
  * ESTRUTURA:
  * 1. Reset e Base Styles
  * 2. Layout e Background
- * 3. Container e Cards
+ *         .login-container,
+    .register-container {
+        max-width: 420px;
+        padding: 2rem;
+    }in-container,
+    .register-container {
+        max-width: 480px;
+        padding: 2.5rem;
+    }ontainer e Cards
  * 4. Forms e Inputs
  * 5. Buttons e Links
  * 6. Messages e Alerts
@@ -75,7 +83,8 @@ body::before {
    2. CONTAINER E CARDS
 ================================ */
 
-.login-container {
+.login-container,
+.register-container {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -383,7 +392,8 @@ body::before {
 }
 
 @media (max-width: 768px) {
-    .login-container {
+    .login-container,
+    .register-container {
         margin: 1rem;
         padding: 2rem;
         max-width: none;
@@ -414,7 +424,8 @@ body::before {
         padding: 1rem 0;
     }
     
-    .login-container {
+    .login-container,
+    .register-container {
         margin: 0.5rem;
         padding: 1.5rem;
         border-radius: 15px;
@@ -446,7 +457,8 @@ body::before {
 
 /* Small mobile */
 @media (max-width: 480px) {
-    .login-container {
+    .login-container,
+    .register-container {
         margin: 0.25rem;
         padding: 1.2rem;
     }
